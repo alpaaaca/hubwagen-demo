@@ -1,0 +1,83 @@
+#!/bin/sh
+# The demo's commands, with the settings from .env (see .env.example).
+#
+#   ./demo build              build bin/hubwagen from $HUBWAGEN_SRC (Go and Node)
+#   ./demo server             the server (terminal 1)
+#   ./demo workers            the workers (terminal 2)
+#   ./demo start [day]        one run of daily, waiting for it (default day: 2026-10-01)
+#   ./demo replay [days]      a run per day (default: 2026-10-01..2026-10-03)
+#   ./demo clean              forget all runs and data versions (server/.hubwagen)
+#   ./demo hubwagen ARGS...   any hubwagen command against the server
+set -eu
+
+root=$(cd "$(dirname "$0")" && pwd)
+cd "$root"
+if [ ! -f .env ]; then
+	echo "no .env: cp .env.example .env, then fill it in" >&2
+	exit 1
+fi
+set -a
+. ./.env
+set +a
+
+: "${HUBWAGEN_SRC:=../hubwagen}"
+: "${HUBWAGEN_LISTEN:=127.0.0.1:7171}"
+case "$HUBWAGEN_SRC" in /*) src=$HUBWAGEN_SRC ;; *) src=$root/$HUBWAGEN_SRC ;; esac
+# The configs read the rest (${HUBWAGEN_BUCKET}, ...) from the environment.
+export HUBWAGEN_SDK="${HUBWAGEN_SDK:-$src/sdk/python/src}"
+bin=$root/bin/hubwagen
+server_url=http://$HUBWAGEN_LISTEN
+
+need_bin() {
+	if [ ! -x "$bin" ]; then
+		echo "no bin/hubwagen: run ./demo build first" >&2
+		exit 1
+	fi
+}
+
+cmd=${1:-}
+[ $# -gt 0 ] && shift
+case "$cmd" in
+build)
+	if [ ! -d "$src" ]; then
+		echo "HUBWAGEN_SRC: $src is not a directory (clone https://github.com/alpaaaca/hubwagen there)" >&2
+		exit 1
+	fi
+	mkdir -p bin
+	(cd "$src/ui" && npm ci)
+	(cd "$src" && go generate ./internal/webui && go build -o "$bin" .)
+	"$bin" version
+	;;
+server)
+	need_bin
+	cd server
+	exec "$bin" server --config hubwagen.yaml "$@"
+	;;
+workers)
+	need_bin
+	# The workers get no bucket credentials: they reach the data through the server.
+	unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+	cd elsewhere/revenue
+	exec "$bin" workers --config hubwagen.yaml "$@"
+	;;
+start)
+	need_bin
+	exec "$bin" start daily --server "$server_url" --param "day=${1:-2026-10-01}" --wait
+	;;
+replay)
+	need_bin
+	exec "$bin" replay daily --server "$server_url" --param "day=${1:-2026-10-01..2026-10-03}"
+	;;
+clean)
+	rm -rf server/.hubwagen
+	echo "removed server/.hubwagen (runs, catalog, local data versions); files in an S3 bucket stay"
+	;;
+hubwagen)
+	need_bin
+	exec "$bin" "$@" --server "$server_url"
+	;;
+*)
+	sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+	[ -z "$cmd" ] || exit 1
+	;;
+esac
