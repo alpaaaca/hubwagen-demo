@@ -1,8 +1,8 @@
 # The worker machine: the workers for this project, against the server.
-#   ./demo workers    (or: moksha workers --config moksha.yaml)
+#   ./moksha workers    (or: moksha workers --config moksha.yaml)
 #
 # They need no bucket credentials: the server hands them URLs for the
-# data. ${NAME} values come from the environment (./demo reads .env).
+# data. ${NAME} values come from the environment (./moksha reads .env).
 apiVersion: moksha.dev/v1alpha1
 kind: Config
 

@@ -1,13 +1,14 @@
 #!/bin/sh
-# The demo's commands, with the settings from .env (see .env.example).
+# moksha for this demo: its commands, with the settings from .env (see
+# .env.example).
 #
-#   ./demo build              build bin/moksha from $MOKSHA_SRC (Go and Node)
-#   ./demo server             the server (terminal 1)
-#   ./demo workers            the workers (terminal 2)
-#   ./demo start [day]        one run of daily, waiting for it (default day: 2026-10-01)
-#   ./demo replay [days]      a run per day (default: 2026-10-01..2026-10-03)
-#   ./demo clean              forget all runs and data versions (server/.moksha)
-#   ./demo moksha ARGS...     any moksha command against the server
+#   ./moksha build            build bin/moksha from $MOKSHA_SRC (Go and Node)
+#   ./moksha server           the server (terminal 1)
+#   ./moksha workers          the workers (terminal 2)
+#   ./moksha start [day]      one run of daily, waiting for it (default day: 2026-10-01)
+#   ./moksha replay [days]    a run per day (default: 2026-10-01..2026-10-03)
+#   ./moksha clean            forget all runs and data versions (server/.moksha)
+#   ./moksha ARGS...          any other moksha command, against the server
 set -eu
 
 root=$(cd "$(dirname "$0")" && pwd)
@@ -30,7 +31,7 @@ server_url=http://$MOKSHA_LISTEN
 
 need_bin() {
 	if [ ! -x "$bin" ]; then
-		echo "no bin/moksha: run ./demo build first" >&2
+		echo "no bin/moksha: run ./moksha build first" >&2
 		exit 1
 	fi
 }
@@ -72,12 +73,11 @@ clean)
 	rm -rf server/.moksha
 	echo "removed server/.moksha (runs, catalog, local data versions); files in an S3 bucket stay"
 	;;
-moksha)
-	need_bin
-	exec "$bin" "$@" --server "$server_url"
+""|help|-h|--help)
+	sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
 	;;
 *)
-	sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
-	[ -z "$cmd" ] || exit 1
+	need_bin
+	exec "$bin" "$cmd" "$@" --server "$server_url"
 	;;
 esac
