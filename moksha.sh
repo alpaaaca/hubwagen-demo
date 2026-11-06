@@ -2,13 +2,13 @@
 # moksha for this demo: its commands, with the settings from .env (see
 # .env.example).
 #
-#   ./moksha build            build bin/moksha from $MOKSHA_SRC (Go and Node)
-#   ./moksha server           the server (terminal 1)
-#   ./moksha workers          the workers (terminal 2)
-#   ./moksha start [day]      one run of daily, waiting for it (default day: 2026-10-01)
-#   ./moksha replay [days]    a run per day (default: 2026-10-01..2026-10-03)
-#   ./moksha clean            forget all runs and data versions (server/.moksha)
-#   ./moksha ARGS...          any other moksha command, against the server
+#   ./moksha.sh build           build bin/moksha from $MOKSHA_SRC (Go and Node)
+#   ./moksha.sh server          the server (terminal 1)
+#   ./moksha.sh workers         the workers (terminal 2)
+#   ./moksha.sh start [day]     one run of daily, waiting for it (default day: 2026-10-01)
+#   ./moksha.sh replay [days]   a run per day (default: 2026-10-01..2026-10-03)
+#   ./moksha.sh clean           forget all runs and data versions (server/.moksha)
+#   ./moksha.sh ARGS...         any other moksha command, against the server
 set -eu
 
 root=$(cd "$(dirname "$0")" && pwd)
@@ -31,7 +31,7 @@ server_url=http://$MOKSHA_LISTEN
 
 need_bin() {
 	if [ ! -x "$bin" ]; then
-		echo "no bin/moksha: run ./moksha build first" >&2
+		echo "no bin/moksha: run ./moksha.sh build first" >&2
 		exit 1
 	fi
 }

@@ -1,11 +1,11 @@
 # The server machine: state in .moksha/ here, data versions in the bucket.
-#   ./moksha server     (or: cd server && moksha server --config moksha.yaml)
+#   ./moksha.sh server     (or: cd server && moksha server --config moksha.yaml)
 #
 # No workers: section, so `moksha server` starts none: the workers run
 # from ../elsewhere/revenue, as if on another machine, and reach the data
 # through URLs this server hands them.
 #
-# ${NAME} values come from the environment (./moksha reads .env); a
+# ${NAME} values come from the environment (./moksha.sh reads .env); a
 # :-default applies when NAME is unset or empty.
 apiVersion: moksha.dev/v1alpha1
 kind: Config

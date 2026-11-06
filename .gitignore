@@ -1,6 +1,6 @@
 # Settings and secrets: .env.example is the committed one.
 .env
-# Built by ./moksha build.
+# Built by ./moksha.sh build.
 bin/
 # The server's state and local data versions.
 .moksha/
