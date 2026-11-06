@@ -7,7 +7,7 @@ S3 bucket, and workers that share no files with it.
 | Path | What |
 |---|---|
 | `moksha.sh` | moksha for this demo: the commands below, with the settings from `.env` |
-| `.env.example` | the settings: where moksha's source is, the port, the bucket and its credentials |
+| `.env.example` | the settings: the port, the bucket and its credentials, where moksha's source is (if you build it) |
 | `server/moksha.yaml` | the server's config: state in `server/.moksha/`, data in the bucket, API and web UI on `MOKSHA_LISTEN` |
 | `elsewhere/revenue/` | the pipelines' code (`revenue/`), source data (`data/orders.csv`) and the workers' config (`moksha.yaml`) |
 
@@ -20,12 +20,44 @@ the server only, as the usual `AWS_ACCESS_KEY_ID` and
 
 ## Setup
 
-Needs Go, Node and Python ≥ 3.12, and a checkout of moksha (by default
-next to this one):
+Needs Python ≥ 3.12 and moksha: a release binary and the Python SDK, or
+both from a checkout of moksha's source.
+
+### With a release (no Go or Node)
+
+Download `moksha_0.1.1_<os>_<arch>.tar.gz` (`darwin` or `linux`, `arm64`
+or `amd64`) from [the v0.1.1
+release](https://github.com/alpaaaca/moksha/releases/tag/v0.1.1) and put
+`moksha` in `bin/` here (or anywhere on your `PATH`); for example, on an
+Apple silicon Mac:
+
+```bash
+mkdir -p bin
+curl -fsSL https://github.com/alpaaaca/moksha/releases/download/v0.1.1/moksha_0.1.1_darwin_arm64.tar.gz | tar -xz -C bin moksha
+bin/moksha version
+```
+
+Then the Python SDK, in a virtual environment the workers run in (it isn't
+on PyPI; pip installs it from the release's tag):
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install "git+https://github.com/alpaaaca/moksha@v0.1.1#subdirectory=sdk/python"
+cp .env.example .env         # then fill it in; without MOKSHA_BUCKET, data stays local
+```
+
+Activate the venv (`. .venv/bin/activate`) in the terminal you start the
+workers in.
+
+### From source
+
+Needs Go and Node too, and a checkout of moksha (by default next to this
+one); the workers then use the SDK from it, with no venv:
 
 ```bash
 git clone https://github.com/alpaaaca/moksha ../moksha
-cp .env.example .env         # then fill it in; without MOKSHA_BUCKET, data stays local
+cp .env.example .env         # then fill it in; MOKSHA_SRC if the checkout is elsewhere
 ./moksha.sh build            # bin/moksha, with the web UI
 ```
 
@@ -33,7 +65,7 @@ cp .env.example .env         # then fill it in; without MOKSHA_BUCKET, data stay
 
 ```bash
 ./moksha.sh server             # terminal 1: the server (it starts no workers)
-./moksha.sh workers            # terminal 2: the workers
+./moksha.sh workers            # terminal 2: the workers (with the venv active)
 ./moksha.sh start 2026-10-01   # terminal 3: one run of daily, waiting for it
 ./moksha.sh replay 2026-10-01..2026-10-03
 ```

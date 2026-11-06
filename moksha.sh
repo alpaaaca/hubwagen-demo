@@ -3,6 +3,7 @@
 # .env.example).
 #
 #   ./moksha.sh build           build bin/moksha from $MOKSHA_SRC (Go and Node)
+#                               (without bin/moksha, the moksha on PATH is used)
 #   ./moksha.sh server          the server (terminal 1)
 #   ./moksha.sh workers         the workers (terminal 2)
 #   ./moksha.sh start [day]     one run of daily, waiting for it (default day: 2026-10-01)
@@ -25,13 +26,21 @@ set +a
 : "${MOKSHA_LISTEN:=127.0.0.1:7171}"
 case "$MOKSHA_SRC" in /*) src=$MOKSHA_SRC ;; *) src=$root/$MOKSHA_SRC ;; esac
 # The configs read the rest (${MOKSHA_BUCKET}, ...) from the environment.
-export MOKSHA_SDK="${MOKSHA_SDK:-$src/sdk/python/src}"
-bin=$root/bin/moksha
+# The workers' PYTHONPATH: the SDK in $MOKSHA_SRC, or none (an installed SDK).
+if [ -z "${MOKSHA_SDK:-}" ] && [ -d "$src/sdk/python/src" ]; then
+	MOKSHA_SDK=$src/sdk/python/src
+fi
+export MOKSHA_SDK="${MOKSHA_SDK:-}"
 server_url=http://$MOKSHA_LISTEN
 
+# bin/moksha if it was built, else the moksha on PATH (a release binary).
 need_bin() {
-	if [ ! -x "$bin" ]; then
-		echo "no bin/moksha: run ./moksha.sh build first" >&2
+	if [ -x "$root/bin/moksha" ]; then
+		bin=$root/bin/moksha
+	elif bin=$(command -v moksha); then
+		:
+	else
+		echo "no moksha: put a release binary on PATH, or run ./moksha.sh build" >&2
 		exit 1
 	fi
 }
@@ -44,6 +53,7 @@ build)
 		echo "MOKSHA_SRC: $src is not a directory (clone https://github.com/alpaaaca/moksha there)" >&2
 		exit 1
 	fi
+	bin=$root/bin/moksha
 	mkdir -p bin
 	(cd "$src/ui" && npm ci)
 	(cd "$src" && go generate ./internal/webui && go build -o "$bin" .)
@@ -74,7 +84,7 @@ clean)
 	echo "removed server/.moksha (runs, catalog, local data versions); files in an S3 bucket stay"
 	;;
 ""|help|-h|--help)
-	sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
 	;;
 *)
 	need_bin
