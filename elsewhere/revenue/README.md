@@ -13,9 +13,9 @@ Run it with `../../demo` (see the demo's [README](../../README.md)):
 ./demo replay 2026-10-01..2026-10-03
 ```
 
-[hubwagen.yaml](hubwagen.yaml) starts the workers (`py-1`,
+[moksha.yaml](moksha.yaml) starts the workers (`py-1`,
 `py-2`, …). To run one by hand instead, from this directory:
-`PYTHONPATH=<hubwagen>/sdk/python/src python3 -m hubwagen.worker --server http://127.0.0.1:7171`.
+`PYTHONPATH=<moksha>/sdk/python/src python3 -m moksha.worker --server http://127.0.0.1:7171`.
 It imports the modules listed in [pyproject.toml](pyproject.toml).
 
 What to try:
@@ -36,5 +36,5 @@ What to try:
    shows it on each run's page; click a step for its output only. Start a
    day with no orders (`./demo start 2026-10-20`) for a warning.
 
-In hubwagen's repository, `sdk/python/tests/test_example.py` runs this
+In moksha's repository, `sdk/python/tests/test_example.py` runs this
 example as a test.

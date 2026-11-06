@@ -1,32 +1,32 @@
-# hubwagen demo: a server, and workers "elsewhere"
+# moksha demo: a server, and workers "elsewhere"
 
-The revenue example from [hubwagen](https://github.com/alpaaaca/hubwagen),
+The revenue example from [moksha](https://github.com/alpaaaca/moksha),
 split the way a real setup is: a server with its state and (optionally) an
 S3 bucket, and workers that share no files with it.
 
 | Path | What |
 |---|---|
 | `demo` | the commands below, with the settings from `.env` |
-| `.env.example` | the settings: where hubwagen's source is, the port, the bucket and its credentials |
-| `server/hubwagen.yaml` | the server's config: state in `server/.hubwagen/`, data in the bucket, API and web UI on `HUBWAGEN_LISTEN` |
-| `elsewhere/revenue/` | the pipelines' code (`revenue/`), source data (`data/orders.csv`) and the workers' config (`hubwagen.yaml`) |
+| `.env.example` | the settings: where moksha's source is, the port, the bucket and its credentials |
+| `server/moksha.yaml` | the server's config: state in `server/.moksha/`, data in the bucket, API and web UI on `MOKSHA_LISTEN` |
+| `elsewhere/revenue/` | the pipelines' code (`revenue/`), source data (`data/orders.csv`) and the workers' config (`moksha.yaml`) |
 
 The configs take what differs per machine from the environment, as
-`${HUBWAGEN_BUCKET:-}` and the like ([hubwagen's config
-variables](https://github.com/alpaaaca/hubwagen/blob/main/docs/config.md#variables));
+`${MOKSHA_BUCKET:-}` and the like ([moksha's config
+variables](https://github.com/alpaaaca/moksha/blob/main/docs/config.md#variables));
 `./demo` loads `.env` into the environment first. Bucket credentials go to
 the server only, as the usual `AWS_ACCESS_KEY_ID` and
 `AWS_SECRET_ACCESS_KEY`.
 
 ## Setup
 
-Needs Go, Node and Python ≥ 3.12, and a checkout of hubwagen (by default
+Needs Go, Node and Python ≥ 3.12, and a checkout of moksha (by default
 next to this one):
 
 ```bash
-git clone https://github.com/alpaaaca/hubwagen ../hubwagen
-cp .env.example .env      # then fill it in; without HUBWAGEN_BUCKET, data stays local
-./demo build              # bin/hubwagen, with the web UI
+git clone https://github.com/alpaaaca/moksha ../moksha
+cp .env.example .env      # then fill it in; without MOKSHA_BUCKET, data stays local
+./demo build              # bin/moksha, with the web UI
 ```
 
 ## Run
@@ -38,7 +38,7 @@ cp .env.example .env      # then fill it in; without HUBWAGEN_BUCKET, data stays
 ./demo replay 2026-10-01..2026-10-03
 ```
 
-Then open http://127.0.0.1:7171 (or your `HUBWAGEN_LISTEN`): pipelines,
+Then open http://127.0.0.1:7171 (or your `MOKSHA_LISTEN`): pipelines,
 runs, their steps and what they printed. When the workers first connect,
 the `nightly` schedule starts a run for the day that just ended; with no
 orders for that day, its report is empty.
@@ -51,10 +51,10 @@ orders for that day, its report is empty.
 - **Reuse**: run the same day twice: `extract_orders` runs again (its
   source can change), the rest is reused because its inputs are the same.
 - **Code changes**: change `daily_revenue` in
-  `elsewhere/revenue/revenue/hauls.py`, restart the workers and replay:
+  `elsewhere/revenue/revenue/pipelines.py`, restart the workers and replay:
   it runs again because "its code changed".
 - **The server restarts while the workers keep going**: Ctrl-C terminal 1
   and start it again; the workers retry until it is back.
 
-`./demo clean` forgets every run and data version (`server/.hubwagen`);
+`./demo clean` forgets every run and data version (`server/.moksha`);
 files already in an S3 bucket stay there, unreferenced.

@@ -1,0 +1,23 @@
+# The server machine: state in .moksha/ here, data versions in the bucket.
+#   ./demo server     (or: cd server && moksha server --config moksha.yaml)
+#
+# No workers: section, so `moksha server` starts none: the workers run
+# from ../elsewhere/revenue, as if on another machine, and reach the data
+# through URLs this server hands them.
+#
+# ${NAME} values come from the environment (./demo reads .env); a
+# :-default applies when NAME is unset or empty.
+apiVersion: moksha.dev/v1alpha1
+kind: Config
+
+data_dir: .moksha
+server:
+  listen: ${MOKSHA_LISTEN:-127.0.0.1:7171}
+
+# Without MOKSHA_BUCKET, data versions go to .moksha/bucket. Credentials
+# come from the usual AWS variables (AWS_ACCESS_KEY_ID,
+# AWS_SECRET_ACCESS_KEY), never this file.
+bucket:
+  url: ${MOKSHA_BUCKET:-}                # s3://bucket[/prefix]
+  endpoint: ${MOKSHA_S3_ENDPOINT:-}      # S3-compatible stores (MinIO, R2); empty for AWS
+  region: ${MOKSHA_S3_REGION:-}          # empty: asked of the store

@@ -1,13 +1,13 @@
 #!/bin/sh
 # The demo's commands, with the settings from .env (see .env.example).
 #
-#   ./demo build              build bin/hubwagen from $HUBWAGEN_SRC (Go and Node)
+#   ./demo build              build bin/moksha from $MOKSHA_SRC (Go and Node)
 #   ./demo server             the server (terminal 1)
 #   ./demo workers            the workers (terminal 2)
 #   ./demo start [day]        one run of daily, waiting for it (default day: 2026-10-01)
 #   ./demo replay [days]      a run per day (default: 2026-10-01..2026-10-03)
-#   ./demo clean              forget all runs and data versions (server/.hubwagen)
-#   ./demo hubwagen ARGS...   any hubwagen command against the server
+#   ./demo clean              forget all runs and data versions (server/.moksha)
+#   ./demo moksha ARGS...     any moksha command against the server
 set -eu
 
 root=$(cd "$(dirname "$0")" && pwd)
@@ -20,17 +20,17 @@ set -a
 . ./.env
 set +a
 
-: "${HUBWAGEN_SRC:=../hubwagen}"
-: "${HUBWAGEN_LISTEN:=127.0.0.1:7171}"
-case "$HUBWAGEN_SRC" in /*) src=$HUBWAGEN_SRC ;; *) src=$root/$HUBWAGEN_SRC ;; esac
-# The configs read the rest (${HUBWAGEN_BUCKET}, ...) from the environment.
-export HUBWAGEN_SDK="${HUBWAGEN_SDK:-$src/sdk/python/src}"
-bin=$root/bin/hubwagen
-server_url=http://$HUBWAGEN_LISTEN
+: "${MOKSHA_SRC:=../moksha}"
+: "${MOKSHA_LISTEN:=127.0.0.1:7171}"
+case "$MOKSHA_SRC" in /*) src=$MOKSHA_SRC ;; *) src=$root/$MOKSHA_SRC ;; esac
+# The configs read the rest (${MOKSHA_BUCKET}, ...) from the environment.
+export MOKSHA_SDK="${MOKSHA_SDK:-$src/sdk/python/src}"
+bin=$root/bin/moksha
+server_url=http://$MOKSHA_LISTEN
 
 need_bin() {
 	if [ ! -x "$bin" ]; then
-		echo "no bin/hubwagen: run ./demo build first" >&2
+		echo "no bin/moksha: run ./demo build first" >&2
 		exit 1
 	fi
 }
@@ -40,7 +40,7 @@ cmd=${1:-}
 case "$cmd" in
 build)
 	if [ ! -d "$src" ]; then
-		echo "HUBWAGEN_SRC: $src is not a directory (clone https://github.com/alpaaaca/hubwagen there)" >&2
+		echo "MOKSHA_SRC: $src is not a directory (clone https://github.com/alpaaaca/moksha there)" >&2
 		exit 1
 	fi
 	mkdir -p bin
@@ -51,14 +51,14 @@ build)
 server)
 	need_bin
 	cd server
-	exec "$bin" server --config hubwagen.yaml "$@"
+	exec "$bin" server --config moksha.yaml "$@"
 	;;
 workers)
 	need_bin
 	# The workers get no bucket credentials: they reach the data through the server.
 	unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 	cd elsewhere/revenue
-	exec "$bin" workers --config hubwagen.yaml "$@"
+	exec "$bin" workers --config moksha.yaml "$@"
 	;;
 start)
 	need_bin
@@ -69,10 +69,10 @@ replay)
 	exec "$bin" replay daily --server "$server_url" --param "day=${1:-2026-10-01..2026-10-03}"
 	;;
 clean)
-	rm -rf server/.hubwagen
-	echo "removed server/.hubwagen (runs, catalog, local data versions); files in an S3 bucket stay"
+	rm -rf server/.moksha
+	echo "removed server/.moksha (runs, catalog, local data versions); files in an S3 bucket stay"
 	;;
-hubwagen)
+moksha)
 	need_bin
 	exec "$bin" "$@" --server "$server_url"
 	;;

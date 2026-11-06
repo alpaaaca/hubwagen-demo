@@ -3,7 +3,7 @@
 # Built by ./demo build.
 bin/
 # The server's state and local data versions.
-.hubwagen/
+.moksha/
 __pycache__/
 *.pyc
 .DS_Store

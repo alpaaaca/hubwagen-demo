@@ -1,0 +1,17 @@
+# The worker machine: the workers for this project, against the server.
+#   ./demo workers    (or: moksha workers --config moksha.yaml)
+#
+# They need no bucket credentials: the server hands them URLs for the
+# data. ${NAME} values come from the environment (./demo reads .env).
+apiVersion: moksha.dev/v1alpha1
+kind: Config
+
+server:
+  listen: ${MOKSHA_LISTEN:-127.0.0.1:7171}   # the server the workers connect to
+
+workers:
+  - name: py
+    replicas: ${MOKSHA_WORKERS:-3}
+    command: [python3, -m, moksha.worker, --steps, "2"]   # modules: pyproject.toml
+    env:
+      PYTHONPATH: ${MOKSHA_SDK:-}   # moksha's Python SDK; empty if it is installed
