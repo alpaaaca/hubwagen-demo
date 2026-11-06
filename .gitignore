@@ -1,11 +1,9 @@
-# Settings and secrets: .env.example is the committed one.
-.env
-# moksha: built by ./moksha.sh build, or from a release.
-bin/
-# The server's state and local data versions.
+# moksha dev's state: runs, catalog, data versions.
 .moksha/
+# moksha, from a release.
+bin/
+# The Python SDK, installed from a release.
+.venv/
 __pycache__/
 *.pyc
 .DS_Store
-# The Python SDK, installed from a release.
-.venv/

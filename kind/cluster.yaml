@@ -1,0 +1,8 @@
+# A one-node kind cluster that pulls localhost:5001/... from the registry
+# kind/up.sh runs next to it.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
