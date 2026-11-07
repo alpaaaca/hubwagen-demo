@@ -104,15 +104,17 @@ moksha deploy --push
 It builds the image (`Dockerfile`), shows what would run again, pushes it
 to the registry and deploys it by digest. The server makes the pool a
 Deployment, `moksha-revenue-default-v1`, with no pods yet. Start a
-backfill and watch them come:
+backfill of two months and watch them come:
 
 ```bash
-moksha replay daily --param day=2026-10-01..2026-10-07
-kubectl --context kind-moksha -n moksha get pods -w
+kubectl --context kind-moksha -n moksha get pods -w     # in a third terminal
+moksha replay daily --param day=2026-09-01..2026-10-31
 ```
 
-It scales up to three pods while the runs wait, and back to none five
-minutes after they finish. The web UI is at http://127.0.0.1:7070, the
+The first run starts a pod; with 61 runs waiting, the pool grows to
+three (`max: 3`), and goes back to none five minutes after the work is
+done. `curl -s http://127.0.0.1:7070/v1/pools` shows each decision and
+why. The web UI is at http://127.0.0.1:7070, the
 same as with `moksha dev`.
 
 Things to try:
@@ -121,10 +123,14 @@ Things to try:
   again. The server creates `moksha-revenue-default-v2` and deletes v1's
   Deployment; its pods finish what they run first. `moksha projects`
   shows what runs.
-- **The server restarts**: `kubectl -n moksha delete pod -l
-  app.kubernetes.io/component=server` during a backfill. Its state is on
-  a volume; the workers retry until it is back, and the runs go on.
-- **Remove the project**: `moksha delete revenue` deletes its Deployments.
+- **The server restarts**: `kubectl --context kind-moksha -n moksha
+  delete pod -l app.kubernetes.io/component=server` during a backfill.
+  The port-forward and `moksha replay` stop with the pod; start the
+  port-forward again once the new one is ready. Its state is on a
+  volume, the workers retry until it is back, and the runs go on: the
+  web UI shows them finishing.
+- **Remove the project**: `moksha delete revenue` deletes its
+  Deployments.
 
 When you're done:
 
