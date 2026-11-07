@@ -19,14 +19,14 @@ Run it on your machine with `moksha dev`, then on a Kubernetes cluster
 
 ## Setup
 
-Needs Python ≥ 3.12. Download `moksha_0.2.0_<os>_<arch>.tar.gz` (`darwin`
-or `linux`, `arm64` or `amd64`) from [the v0.2.0
-release](https://github.com/alpaaaca/moksha/releases/tag/v0.2.0); for
+Needs Python ≥ 3.12. Download `moksha_0.2.1_<os>_<arch>.tar.gz` (`darwin`
+or `linux`, `arm64` or `amd64`) from [the v0.2.1
+release](https://github.com/alpaaaca/moksha/releases/tag/v0.2.1); for
 example, on an Apple silicon Mac:
 
 ```bash
 mkdir -p bin
-curl -fsSL https://github.com/alpaaaca/moksha/releases/download/v0.2.0/moksha_0.2.0_darwin_arm64.tar.gz | tar -xz -C bin moksha
+curl -fsSL https://github.com/alpaaaca/moksha/releases/download/v0.2.1/moksha_0.2.1_darwin_arm64.tar.gz | tar -xz -C bin moksha
 export PATH=$PWD/bin:$PATH
 moksha version
 ```
@@ -37,7 +37,7 @@ installs it from the release's tag):
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install "git+https://github.com/alpaaaca/moksha@v0.2.0#subdirectory=sdk/python"
+pip install "git+https://github.com/alpaaaca/moksha@v0.2.1#subdirectory=sdk/python"
 ```
 
 ## On your machine: `moksha dev`
@@ -64,8 +64,17 @@ nothing to run. `moksha dev` prints when.
 Things to try:
 
 - **Reuse**: replay the same days again. `extract_orders` runs (it reads
-  a source that can change), but its output is identical, so
-  `daily_revenue` and `revenue_report` are reused.
+  a source that can change, so it says `reuse=False`), but its output is
+  identical, so `daily_revenue` and `revenue_report` (`reuse=True`) are
+  reused.
+- **Before a backfill**: `moksha replay daily --param
+  day=2026-10-01..2026-10-07 --dry-run` starts nothing and says, from
+  the latest earlier run of each day, what would be reused and what would
+  run again. `--reuse=none` (without `--dry-run`) recomputes everything.
+- **The reuse hint**: take `reuse=True` off `revenue_report` and save, then
+  replay twice. It runs each time, and the second replay ends with a
+  hint: it got the same result as before, so `reuse=True` may help. Put
+  it back.
 - **Code changes**: change `daily_revenue` in
   [revenue/pipelines.py](revenue/pipelines.py) (say, round to whole units:
   `Decimal("1")`) and save. `moksha dev` deploys v2; replay, and it runs
@@ -88,7 +97,7 @@ podman. Stop `moksha dev` first: both use port 7070.
 
 ```bash
 ./kind/up.sh                   # a cluster "moksha" and a registry at localhost:5001
-helm install moksha oci://ghcr.io/alpaaaca/charts/moksha --version 0.2.0 \
+helm install moksha oci://ghcr.io/alpaaaca/charts/moksha --version 0.2.1 \
   --kube-context kind-moksha -n moksha --create-namespace
 kubectl --context kind-moksha -n moksha rollout status deploy/moksha
 kubectl --context kind-moksha -n moksha port-forward svc/moksha 7070   # leave it running
