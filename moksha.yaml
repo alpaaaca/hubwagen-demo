@@ -1,0 +1,22 @@
+# The revenue project: its pipelines (revenue/), how to build its image,
+# and its pools of workers. One file for both ways to run it:
+#
+#   moksha dev                 here: a server, and this project deployed to
+#                              it in place (no image), again on every change
+#   moksha deploy --push       to a server on Kubernetes: the image built,
+#                              pushed and run by digest, a Deployment per pool
+apiVersion: moksha.dev/v1alpha1
+kind: Project
+name: revenue
+
+build:
+  dockerfile: Dockerfile
+  # The kind cluster's registry (kind/up.sh). In a real setup, yours:
+  # ghcr.io/acme/revenue, with projects.imagePullSecrets in the chart.
+  image: localhost:5001/revenue
+
+pools:
+  - name: default
+    min: 0        # no workers while nothing waits
+    max: 3        # more while work waits: a backfill gets three
+    steps: 2      # steps one worker runs at once

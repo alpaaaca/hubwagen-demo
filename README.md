@@ -1,92 +1,137 @@
-# moksha demo: a server, and workers "elsewhere"
+# moksha demo: daily revenue
 
-The revenue example from [moksha](https://github.com/alpaaaca/moksha),
-split the way a real setup is: a server with its state and (optionally) an
-S3 bucket, and workers that share no files with it.
+A [moksha](https://github.com/alpaaaca/moksha) project: one run per day,
+`extract_orders` → `daily_revenue` → `revenue_report`, each writing a new
+version of its dataset. Source data is `data/orders.csv`; `nightly` runs it
+at 03:00 UTC for the day that just ended.
+
+Run it on your machine with `moksha dev`, then on a Kubernetes cluster
+(kind) with `helm install` and `moksha deploy`. The same project file,
+[moksha.yaml](moksha.yaml), serves both.
 
 | Path | What |
 |---|---|
-| `moksha.sh` | moksha for this demo: the commands below, with the settings from `.env` |
-| `.env.example` | the settings: the port, the bucket and its credentials, where moksha's source is (if you build it) |
-| `server/moksha.yaml` | the server's config: state in `server/.moksha/`, data in the bucket, API and web UI on `MOKSHA_LISTEN` |
-| `elsewhere/revenue/` | the pipelines' code (`revenue/`), source data (`data/orders.csv`) and the workers' config (`moksha.yaml`) |
-
-The configs take what differs per machine from the environment, as
-`${MOKSHA_BUCKET:-}` and the like ([moksha's config
-variables](https://github.com/alpaaaca/moksha/blob/main/docs/config.md#variables));
-`./moksha.sh` loads `.env` into the environment first. Bucket credentials go to
-the server only, as the usual `AWS_ACCESS_KEY_ID` and
-`AWS_SECRET_ACCESS_KEY`.
+| `moksha.yaml` | the project: its name, how its image is built, its pool of workers (0 to 3) |
+| `revenue/` | the pipelines and steps ([pipelines.py](revenue/pipelines.py), [nightly.py](revenue/nightly.py)) |
+| `pyproject.toml` | the modules the worker imports (`[tool.moksha]`) |
+| `Dockerfile` | the project's image: moksha's worker image and this code |
+| `kind/` | a local cluster and registry for the Kubernetes part |
 
 ## Setup
 
-Needs Python ≥ 3.12 and moksha: a release binary and the Python SDK, or
-both from a checkout of moksha's source.
-
-### With a release (no Go or Node)
-
-Download `moksha_0.1.1_<os>_<arch>.tar.gz` (`darwin` or `linux`, `arm64`
-or `amd64`) from [the v0.1.1
-release](https://github.com/alpaaaca/moksha/releases/tag/v0.1.1) and put
-`moksha` in `bin/` here (or anywhere on your `PATH`); for example, on an
-Apple silicon Mac:
+Needs Python ≥ 3.12. Download `moksha_0.2.0_<os>_<arch>.tar.gz` (`darwin`
+or `linux`, `arm64` or `amd64`) from [the v0.2.0
+release](https://github.com/alpaaaca/moksha/releases/tag/v0.2.0); for
+example, on an Apple silicon Mac:
 
 ```bash
 mkdir -p bin
-curl -fsSL https://github.com/alpaaaca/moksha/releases/download/v0.1.1/moksha_0.1.1_darwin_arm64.tar.gz | tar -xz -C bin moksha
-bin/moksha version
+curl -fsSL https://github.com/alpaaaca/moksha/releases/download/v0.2.0/moksha_0.2.0_darwin_arm64.tar.gz | tar -xz -C bin moksha
+export PATH=$PWD/bin:$PATH
+moksha version
 ```
 
-Then the Python SDK, in a virtual environment the workers run in (it isn't
-on PyPI; pip installs it from the release's tag):
+Then the Python SDK, in a virtual environment (it isn't on PyPI yet; pip
+installs it from the release's tag):
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install "git+https://github.com/alpaaaca/moksha@v0.1.1#subdirectory=sdk/python"
-cp .env.example .env         # then fill it in; without MOKSHA_BUCKET, data stays local
+pip install "git+https://github.com/alpaaaca/moksha@v0.2.0#subdirectory=sdk/python"
 ```
 
-Activate the venv (`. .venv/bin/activate`) in the terminal you start the
-workers in.
+## On your machine: `moksha dev`
 
-### From source
-
-Needs Go and Node too, and a checkout of moksha (by default next to this
-one); the workers then use the SDK from it, with no venv:
+With the venv active, in this directory:
 
 ```bash
-git clone https://github.com/alpaaaca/moksha ../moksha
-cp .env.example .env         # then fill it in; MOKSHA_SRC if the checkout is elsewhere
-./moksha.sh build            # bin/moksha, with the web UI
+moksha dev
 ```
 
-## Run
+It starts a server (its state in `.moksha/`, the API and web UI on
+http://127.0.0.1:7070) and deploys this project to it as v1: its code in
+place, run by the venv's `python3`. In another terminal:
 
 ```bash
-./moksha.sh server             # terminal 1: the server (it starts no workers)
-./moksha.sh workers            # terminal 2: the workers (with the venv active)
-./moksha.sh start 2026-10-01   # terminal 3: one run of daily, waiting for it
-./moksha.sh replay 2026-10-01..2026-10-03
+moksha start daily --param day=2026-10-01 --wait
+moksha replay daily --param day=2026-10-01..2026-10-03
 ```
 
-Then open http://127.0.0.1:7171 (or your `MOKSHA_LISTEN`): pipelines,
-runs, their steps and what they printed. When the workers first connect,
-the `nightly` schedule starts a run for the day that just ended; with no
-orders for that day, its report is empty.
+The pool has no workers while nothing waits (`min: 0`); a run starts one,
+a backfill up to three (`max: 3`), and they stop after five minutes with
+nothing to run. `moksha dev` prints when.
 
-## Things to try
+Things to try:
 
-- **No worker**: stop the workers and `./moksha.sh start`: after a few seconds
-  it says "waiting: no worker is connected …", in the CLI and on the run's
-  page. Start the workers again and it runs.
-- **Reuse**: run the same day twice: `extract_orders` runs again (its
-  source can change), the rest is reused because its inputs are the same.
+- **Reuse**: replay the same days again. `extract_orders` runs (it reads
+  a source that can change), but its output is identical, so
+  `daily_revenue` and `revenue_report` are reused.
 - **Code changes**: change `daily_revenue` in
-  `elsewhere/revenue/revenue/pipelines.py`, restart the workers and replay:
-  it runs again because "its code changed".
-- **The server restarts while the workers keep going**: Ctrl-C terminal 1
-  and start it again; the workers retry until it is back.
+  [revenue/pipelines.py](revenue/pipelines.py) (say, round to whole units:
+  `Decimal("1")`) and save. `moksha dev` deploys v2; replay, and it runs
+  again because "its code changed", and `revenue_report` because "an
+  input changed".
+- **Data changes**: add a row for 2026-10-02 to `data/orders.csv` and
+  replay: only that day's `daily_revenue` and report run again.
+- **What steps print**: the web UI shows it on each run's page; click a
+  step for its output alone. `moksha start daily --param day=2026-10-20`
+  (no orders that day) logs a warning.
+- **Restarts**: Ctrl-C `moksha dev` during a replay and start it again:
+  the runs pick up where they were, and finished steps aren't run again.
 
-`./moksha.sh clean` forgets every run and data version (`server/.moksha`);
-files already in an S3 bucket stay there, unreferenced.
+`rm -rf .moksha` forgets every run and data version.
+
+## On Kubernetes: kind, `helm install`, `moksha deploy`
+
+Needs [kind](https://kind.sigs.k8s.io), kubectl, Helm, and Docker or
+podman. Stop `moksha dev` first: both use port 7070.
+
+```bash
+./kind/up.sh                   # a cluster "moksha" and a registry at localhost:5001
+helm install moksha oci://ghcr.io/alpaaaca/charts/moksha --version 0.2.0 \
+  --kube-context kind-moksha -n moksha --create-namespace
+kubectl --context kind-moksha -n moksha rollout status deploy/moksha
+kubectl --context kind-moksha -n moksha port-forward svc/moksha 7070   # leave it running
+```
+
+The chart installs only the server; the server runs what you deploy to
+it. In another terminal, here:
+
+```bash
+moksha deploy --push
+```
+
+It builds the image (`Dockerfile`), shows what would run again, pushes it
+to the registry and deploys it by digest. The server makes the pool a
+Deployment, `moksha-revenue-default-v1`, with no pods yet. Start a
+backfill and watch them come:
+
+```bash
+moksha replay daily --param day=2026-10-01..2026-10-07
+kubectl --context kind-moksha -n moksha get pods -w
+```
+
+It scales up to three pods while the runs wait, and back to none five
+minutes after they finish. The web UI is at http://127.0.0.1:7070, the
+same as with `moksha dev`.
+
+Things to try:
+
+- **A new version**: change `daily_revenue` and `moksha deploy --push`
+  again. The server creates `moksha-revenue-default-v2` and deletes v1's
+  Deployment; its pods finish what they run first. `moksha projects`
+  shows what runs.
+- **The server restarts**: `kubectl -n moksha delete pod -l
+  app.kubernetes.io/component=server` during a backfill. Its state is on
+  a volume; the workers retry until it is back, and the runs go on.
+- **Remove the project**: `moksha delete revenue` deletes its Deployments.
+
+When you're done:
+
+```bash
+./kind/down.sh                 # the cluster and the registry
+```
+
+The cluster here keeps data versions on the server's volume. For a real
+one, give the chart an S3 bucket, and push your images to a registry
+your cluster pulls from: moksha's [deploy.md](https://github.com/alpaaaca/moksha/blob/main/docs/deploy.md#kubernetes-the-helm-chart).
